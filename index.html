@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="fa" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LC | Notepad</title>
+
+    <!-- External CDN Libraries for PDF/DOCX Export -->
+    <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@9.3.0/build/index.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+    <!-- Google Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <!-- Vazirmatn font for beautiful Persian rendering -->
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+
+    <style>
+        /* ========================================
+           CSS VARIABLES & THEME SYSTEM
+        ======================================== */
+        :root {
+            --bg-primary: #f8f9fc;
+            --bg-secondary: #ffffff;
+            --bg-toolbar: #ffffff;
+            --bg-hover: #e8ecf4;
+            --bg-active: #dde3f0;
+            --bg-input: #f1f3f8;
+            --bg-toast: #323642;
+            --text-primary: #1a1d2e;
+            --text-secondary: #5f6577;
+            --text-muted: #9da3b4;
+            --text-toast: #ffffff;
+            --border-color: #e2e6ef;
+            --accent: #4f6ef7;
+            --accent-hover: #3b5ae0;
+            --accent-light: #eef1fd;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+            --line-number-bg: #f4f5f9;
+            --line-number-color: #b0b5c5;
+            --scrollbar-track: #f1f3f8;
+            --scrollbar-thumb: #c8cdd9;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f1117;
+            --bg-secondary: #181a24;
+            --bg-toolbar: #1c1f2e;
+            --bg-hover: #252838;
+            --bg-active: #2e3248;
+            --bg-input: #252838;
+            --bg-toast: #e8ecf4;
+            --text-primary: #e4e7f1;
+            --text-secondary: #9da3b4;
+            --text-muted: #5f6577;
+            --text-toast: #1a1d2e;
+            --border-color: #2a2d3d;
+            --accent: #6b8aff;
+            --accent-hover: #5a76e8;
+            --accent-light: #1e2340;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+            --shadow-lg: 0 8px 30px rgba(0,0,0,0.4);
+            --line-number-bg: #14161f;
+            --line-number-color: #3d4156;
+            --scrollbar-track: #14161f;
+            --scrollbar-thumb: #2e3248;
+        }
+
+        /* ========================================
+           RESET & BASE STYLES
+        ======================================== */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Vazirmatn', 'Segoe UI', Tahoma, -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        /* ========================================
+           SCROLLBAR STYLING
+        ======================================== */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+        ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* ========================================
+           APP LAYOUT
+        ======================================== */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* ========================================
+           TOOLBAR
+        ======================================== */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            padding: 6px 12px;
+            background: var(--bg-toolbar);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            z-index: 100;
+            flex-shrink: 0;
+            transition: background 0.3s ease, border-color 0.3s ease;
+            flex-wrap: wrap;
+            direction: ltr; /* toolbar always LTR for consistency */
+        }
+
+        .toolbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-right: 12px;
+            padding-right: 12px;
+            border-right: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .toolbar-brand .logo {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .toolbar-brand .brand-name {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text-primary);
+            letter-spacing: -0.3px;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            padding: 0 4px;
+        }
+
+        .toolbar-group + .toolbar-group {
+            border-left: 1px solid var(--border-color);
+            margin-left: 4px;
+            padding-left: 8px;
+        }
+
+        .toolbar-spacer { flex: 1; }
+
+        /* Toolbar Buttons */
+        .tb-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .tb-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .tb-btn:active {
+            background: var(--bg-active);
+            transform: scale(0.95);
+        }
+
+        .tb-btn.active {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        .tb-btn .material-icons-round { font-size: 20px; }
+
+        .tb-btn[data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: -34px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.9);
+            padding: 5px 10px;
+            background: var(--bg-toast);
+            color: var(--text-toast);
+            font-size: 11px;
+            font-weight: 500;
+            font-family: 'Vazirmatn', 'Segoe UI', sans-serif;
+            border-radius: 6px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.15s ease;
+            z-index: 1000;
+        }
+
+        .tb-btn[data-tooltip]:hover::after {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+        }
+
+        /* Toolbar Select Dropdowns */
+        .tb-select {
+            height: 34px;
+            padding: 0 28px 0 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: inherit;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239da3b4' d='M3 4.5L6 8l3-3.5H3z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        .tb-select:hover { border-color: var(--accent); }
+        .tb-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+
+        #fontSelect { width: 150px; }
+        #fontSizeSelect { width: 72px; }
+
+        /* ========================================
+           DIRECTION TOGGLE BUTTON
+        ======================================== */
+        .dir-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 34px;
+            padding: 0 10px;
+            gap: 4px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'Vazirmatn', monospace;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+            letter-spacing: 0.5px;
+        }
+
+        .dir-btn:hover { border-color: var(--accent); background: var(--accent-light); }
+        .dir-btn.rtl-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+        /* ========================================
+           SEARCH BAR
+        ======================================== */
+        .search-bar {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-toolbar);
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+            transition: background 0.3s ease;
+            flex-wrap: wrap;
+            direction: ltr;
+        }
+
+        .search-bar.active { display: flex; }
+
+        .search-input-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0 10px;
+            flex: 1;
+            min-width: 160px;
+            max-width: 300px;
+            transition: border-color 0.15s ease;
+        }
+
+        .search-input-wrap:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+        }
+
+        .search-input-wrap input {
+            flex: 1;
+            height: 34px;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .search-input-wrap .material-icons-round {
+            font-size: 18px;
+            color: var(--text-muted);
+        }
+
+        .search-count {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .search-btn {
+            height: 32px;
+            padding: 0 14px;
+            border: none;
+            border-radius: 8px;
+            background: var(--accent);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .search-btn:hover { background: var(--accent-hover); }
+
+        .search-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .search-close:hover { background: var(--bg-hover); }
+
+        /* ========================================
+           EDITOR AREA
+        ======================================== */
+        .editor-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Line Numbers */
+        .line-numbers {
+            width: 52px;
+            padding: 16px 0;
+            background: var(--line-number-bg);
+            text-align: center;
+            font-family: 'Vazirmatn', 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 13px;
+            line-height: 1.75;
+            color: var(--line-number-color);
+            overflow: hidden;
+            user-select: none;
+            flex-shrink: 0;
+            transition: background 0.3s ease, border-color 0.3s ease;
+            order: 0;
+        }
+
+        /* LTR mode: line numbers on left */
+        .editor-container .line-numbers {
+            border-right: 1px solid var(--border-color);
+            border-left: none;
+            order: 0;
+        }
+
+        /* RTL mode: line numbers on right */
+        .editor-container.rtl-mode .line-numbers {
+            border-left: 1px solid var(--border-color);
+            border-right: none;
+            order: 1;
+        }
+
+        .line-numbers div {
+            padding: 0 10px;
+            height: calc(1.75em);
+        }
+
+        /* Main Editor Textarea */
+        .editor {
+            flex: 1;
+            width: 100%;
+            padding: 16px 24px;
+            border: none;
+            outline: none;
+            resize: none;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: 'Vazirmatn', 'Segoe UI', Tahoma, sans-serif;
+            font-size: 15px;
+            line-height: 1.75;
+            tab-size: 4;
+            transition: background 0.3s ease, color 0.3s ease;
+            overflow-y: auto;
+            direction: ltr;
+            text-align: left;
+            unicode-bidi: plaintext;
+        }
+
+        /* RTL editor mode */
+        .editor.rtl {
+            direction: rtl;
+            text-align: right;
+        }
+
+        .editor::placeholder {
+            color: var(--text-muted);
+            font-family: 'Vazirmatn', 'Segoe UI', sans-serif;
+        }
+
+        /* ========================================
+           STATUS BAR
+        ======================================== */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 16px;
+            background: var(--bg-toolbar);
+            border-top: 1px solid var(--border-color);
+            font-size: 12px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+            transition: background 0.3s ease, border-color 0.3s ease;
+            gap: 12px;
+            flex-wrap: wrap;
+            direction: ltr;
+        }
+
+        .status-bar .status-left,
+        .status-bar .status-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-item .material-icons-round { font-size: 14px; }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #4ade80;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* ========================================
+           TOAST NOTIFICATIONS
+        ======================================== */
+        .toast-container {
+            position: fixed;
+            bottom: 48px;
+            left: 20px;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 8px;
+            z-index: 10000;
+            pointer-events: none;
+            direction: ltr;
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 18px;
+            background: var(--bg-toast);
+            color: var(--text-toast);
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: 'Vazirmatn', 'Segoe UI', sans-serif;
+            box-shadow: var(--shadow-lg);
+            pointer-events: auto;
+            animation: toast-in 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+            max-width: 400px;
+            direction: rtl;
+        }
+
+        .toast.toast-out {
+            animation: toast-out 0.3s ease forwards;
+        }
+
+        .toast .material-icons-round { font-size: 20px; }
+
+        .toast.success .material-icons-round { color: #4ade80; }
+        .toast.error .material-icons-round { color: #f87171; }
+        .toast.info .material-icons-round { color: #60a5fa; }
+        .toast.warning .material-icons-round { color: #fbbf24; }
+
+        @keyframes toast-in {
+            from { transform: translateX(-80px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes toast-out {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(-80px); opacity: 0; }
+        }
+
+        /* ========================================
+           FULLSCREEN MODE
+        ======================================== */
+        .app-container.fullscreen .toolbar,
+        .app-container.fullscreen .status-bar,
+        .app-container.fullscreen .search-bar {
+            display: none !important;
+        }
+
+        .app-container.fullscreen .editor {
+            padding: 40px 80px;
+        }
+
+        .app-container.fullscreen .line-numbers {
+            display: none;
+        }
+
+        /* ========================================
+           RESPONSIVE / MOBILE
+        ======================================== */
+        @media (max-width: 768px) {
+            .toolbar { padding: 4px 8px; gap: 1px; }
+            .toolbar-brand { margin-right: 6px; padding-right: 6px; }
+            .toolbar-brand .brand-name { display: none; }
+            .toolbar-group + .toolbar-group { margin-left: 2px; padding-left: 4px; }
+            #fontSelect { width: 100px; }
+            .editor { padding: 12px 14px; font-size: 14px; }
+            .line-numbers { width: 38px; font-size: 11px; }
+            .line-numbers div { padding: 0 6px; }
+            .status-bar .status-right { display: none; }
+            .app-container.fullscreen .editor { padding: 20px; }
+            .tb-btn[data-tooltip]::after { display: none; }
+        }
+
+        @media (max-width: 480px) {
+            .toolbar-group.hide-mobile { display: none; }
+            .search-input-wrap { max-width: 100%; }
+        }
+
+        /* ========================================
+           PRINT STYLES
+        ======================================== */
+        @media print {
+            .toolbar, .status-bar, .search-bar, .toast-container, .line-numbers { display: none !important; }
+            .editor-container { overflow: visible !important; }
+            .editor {
+                overflow: visible !important;
+                height: auto !important;
+                background: #fff !important;
+                color: #000 !important;
+                padding: 0 !important;
+            }
+        }
+
+        /* ========================================
+           ANIMATIONS
+        ======================================== */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ========================================
+           RTL DIRECTION INDICATOR BADGE
+        ======================================== */
+        .dir-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            font-family: 'Vazirmatn', monospace;
+        }
+        .dir-badge.ltr { background: #dbeafe; color: #2563eb; }
+        .dir-badge.rtl { background: #dcfce7; color: #16a34a; }
+        [data-theme="dark"] .dir-badge.ltr { background: #1e3a5f; color: #60a5fa; }
+        [data-theme="dark"] .dir-badge.rtl { background: #14532d; color: #4ade80; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container" id="appContainer">
+
+        <!-- ==========================================
+             TOOLBAR
+        ========================================== -->
+        <div class="toolbar" id="toolbar">
+            <!-- Brand -->
+            <div class="toolbar-brand">
+                <div class="logo">
+                    <span class="material-icons-round" style="font-size:18px;">edit_note</span>
+                </div>
+                <span class="brand-name">Lc | note pad</span>
+            </div>
+
+            <!-- File Actions -->
+            <div class="toolbar-group">
+                <button class="tb-btn" data-tooltip="سند جدید (Ctrl+N)" onclick="newDocument()">
+                    <span class="material-icons-round">note_add</span>
+                </button>
+                <button class="tb-btn" data-tooltip="باز کردن (Ctrl+O)" onclick="openFile()">
+                    <span class="material-icons-round">folder_open</span>
+                </button>
+                <button class="tb-btn" data-tooltip="ذخیره TXT (Ctrl+S)" onclick="saveTXT()">
+                    <span class="material-icons-round">save</span>
+                </button>
+            </div>
+
+            <!-- Export -->
+            <div class="toolbar-group hide-mobile">
+                <button class="tb-btn" data-tooltip="خروجی PDF" onclick="exportPDF()">
+                    <span class="material-icons-round">picture_as_pdf</span>
+                </button>
+                <button class="tb-btn" data-tooltip="خروجی DOCX" onclick="exportDOCX()">
+                    <span class="material-icons-round">description</span>
+                </button>
+                <button class="tb-btn" data-tooltip="چاپ (Ctrl+P)" onclick="printDocument()">
+                    <span class="material-icons-round">print</span>
+                </button>
+            </div>
+
+            <!-- Edit -->
+            <div class="toolbar-group">
+                <button class="tb-btn" data-tooltip="برگردان (Ctrl+Z)" onclick="editorUndo()">
+                    <span class="material-icons-round">undo</span>
+                </button>
+                <button class="tb-btn" data-tooltip="از نو (Ctrl+Y)" onclick="editorRedo()">
+                    <span class="material-icons-round">redo</span>
+                </button>
+                <button class="tb-btn" data-tooltip="جستجو (Ctrl+F)" onclick="toggleSearch()">
+                    <span class="material-icons-round">search</span>
+                </button>
+            </div>
+
+            <!-- Direction Toggle -->
+            <div class="toolbar-group">
+                <button class="dir-btn" id="dirToggleBtn" data-tooltip="تغییر جهت متن" onclick="toggleDirection()">
+                    <span class="material-icons-round" style="font-size:18px;" id="dirIcon">format_textdirection_r_to_l</span>
+                    <span id="dirLabel">LTR</span>
+                </button>
+            </div>
+
+            <!-- Font Controls -->
+            <div class="toolbar-group hide-mobile">
+                <select id="fontSelect" class="tb-select" onchange="changeFont(this.value)">
+                    <option value="Vazirmatn">Vazirmatn</option>
+                </select>
+                <select id="fontSizeSelect" class="tb-select" onchange="changeFontSize(this.value)">
+                    <option value="12">12</option>
+                    <option value="13">13</option>
+                    <option value="14">14</option>
+                    <option value="15" selected>15</option>
+                    <option value="16">16</option>
+                    <option value="18">18</option>
+                    <option value="20">20</option>
+                    <option value="22">22</option>
+                    <option value="24">24</option>
+                    <option value="28">28</option>
+                    <option value="32">32</option>
+                    <option value="36">36</option>
+                    <option value="40">40</option>
+                    <option value="48">48</option>
+                </select>
+            </div>
+
+            <div class="toolbar-spacer"></div>
+
+            <!-- Right Side Actions -->
+            <div class="toolbar-group">
+                <button class="tb-btn" data-tooltip="تمام‌صفحه" onclick="toggleFullscreen()">
+                    <span class="material-icons-round" id="fullscreenIcon">fullscreen</span>
+                </button>
+                <button class="tb-btn" data-tooltip="تغییر تم" onclick="toggleTheme()" id="themeBtn">
+                    <span class="material-icons-round" id="themeIcon">dark_mode</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             SEARCH BAR
+        ========================================== -->
+        <div class="search-bar" id="searchBar">
+            <div class="search-input-wrap">
+                <span class="material-icons-round">search</span>
+                <input type="text" id="searchInput" placeholder="جستجو..." oninput="performSearch()" onkeydown="searchKeyHandler(event)">
+            </div>
+            <span class="search-count" id="searchCount"></span>
+            <button class="tb-btn" onclick="searchPrev()" style="width:32px;height:32px;">
+                <span class="material-icons-round" style="font-size:18px;">keyboard_arrow_up</span>
+            </button>
+            <button class="tb-btn" onclick="searchNext()" style="width:32px;height:32px;">
+                <span class="material-icons-round" style="font-size:18px;">keyboard_arrow_down</span>
+            </button>
+            <div class="search-input-wrap" style="max-width:220px;">
+                <span class="material-icons-round">find_replace</span>
+                <input type="text" id="replaceInput" placeholder="جایگزینی با...">
+            </div>
+            <button class="search-btn" onclick="replaceCurrent()">جایگزین</button>
+            <button class="search-btn" onclick="replaceAll()">همه</button>
+            <button class="search-close" onclick="toggleSearch()">
+                <span class="material-icons-round" style="font-size:18px;">close</span>
+            </button>
+        </div>
+
+        <!-- ==========================================
+             EDITOR AREA
+        ========================================== -->
+        <div class="editor-container" id="editorContainer">
+            <div class="line-numbers" id="lineNumbers"></div>
+            <textarea
+                class="editor"
+                id="editor"
+                placeholder="Start typing here..."
+                spellcheck="true"
+                autofocus
+            ></textarea>
+        </div>
+
+        <!-- ==========================================
+             STATUS BAR
+        ========================================== -->
+        <div class="status-bar">
+            <div class="status-left">
+                <div class="status-item">
+                    <div class="status-dot" id="autosaveDot"></div>
+                    <span id="autosaveStatus">ذخیره خودکار</span>
+                </div>
+                <div class="status-item">
+                    <span class="material-icons-round">text_fields</span>
+                    <span id="charCount">۰ نویسه</span>
+                </div>
+                <div class="status-item">
+                    <span class="material-icons-round">notes</span>
+                    <span id="wordCount">۰ واژه</span>
+                </div>
+                <div class="status-item">
+                    <span class="material-icons-round">format_list_numbered</span>
+                    <span id="lineCount">۱ سطر</span>
+                </div>
+            </div>
+            <div class="status-right">
+                <div class="status-item">
+                    <span class="material-icons-round">language</span>
+                    <span class="dir-badge ltr" id="dirBadge">LTR</span>
+                </div>
+                <div class="status-item">
+                    <span class="material-icons-round">keyboard</span>
+                    <span>سطر <span id="cursorLine">۱</span>، ستون <span id="cursorCol">۱</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" id="fileInput" accept=".txt,.text,.md,.log,.csv,.json,.xml,.html,.css,.js" style="display:none" onchange="handleFileOpen(event)">
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ==========================================
+         JAVASCRIPT
+    ========================================== -->
+    <script>
+        /* ========================================
+           REFERENCES & STATE
+        ======================================== */
+        const editor = document.getElementById('editor');
+        const lineNumbers = document.getElementById('lineNumbers');
+        const editorContainer = document.getElementById('editorContainer');
+        const toastContainer = document.getElementById('toastContainer');
+        const searchBar = document.getElementById('searchBar');
+        const searchInput = document.getElementById('searchInput');
+        const replaceInput = document.getElementById('replaceInput');
+        const searchCountEl = document.getElementById('searchCount');
+        const appContainer = document.getElementById('appContainer');
+        const fontSelect = document.getElementById('fontSelect');
+        const fontSizeSelect = document.getElementById('fontSizeSelect');
+        const dirToggleBtn = document.getElementById('dirToggleBtn');
+
+        let autosaveTimer = null;
+        let isFullscreen = false;
+        let searchMatches = [];
+        let currentMatchIndex = -1;
+        let currentDir = 'ltr'; // current text direction state
+
+        /* ========================================
+           INITIALIZATION
+        ======================================== */
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTheme();
+            loadDirection();
+            loadDocument();
+            populateFonts();
+            loadFontPrefs();
+            updateStats();
+            updateLineNumbers();
+            editor.focus();
+        });
+
+        /* ========================================
+           THEME SYSTEM
+        ======================================== */
+        function loadTheme() {
+            const saved = localStorage.getItem('pronote-theme') || 'light';
+            applyTheme(saved);
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            const icon = document.getElementById('themeIcon');
+            icon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+            localStorage.setItem('pronote-theme', theme);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+            showToast(next === 'dark' ? 'تم تاریک فعال شد' : 'تم روشن فعال شد', 'info');
+        }
+
+        /* ========================================
+           DIRECTION SYSTEM (RTL / LTR)
+           — Full manual toggle + auto-detect
+        ======================================== */
+        function loadDirection() {
+            const saved = localStorage.getItem('pronote-direction') || 'auto';
+            if (saved === 'rtl') {
+                setDirection('rtl');
+            } else if (saved === 'ltr') {
+                setDirection('ltr');
+            } else {
+                // Auto-detect from saved content
+                const text = localStorage.getItem('pronote-document') || '';
+                const detected = detectTextDirection(text);
+                setDirection(detected);
+            }
+        }
+
+        /** Detect direction based on first meaningful character in text */
+        function detectTextDirection(text) {
+            const stripped = text.replace(/[\s\d\n\r\t.,;:!?@#$%^&*()_+\-=\[\]{}|\\/<>"'`~۰-۹٠-٩]/g, '');
+            if (!stripped) return currentDir || 'ltr';
+            const firstChar = stripped.charAt(0);
+            const rtlRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u0590-\u05FF]/;
+            return rtlRegex.test(firstChar) ? 'rtl' : 'ltr';
+        }
+
+        /** Set the editor direction */
+        function setDirection(dir) {
+            currentDir = dir;
+            const isRTL = dir === 'rtl';
+
+            // Editor textarea
+            editor.classList.toggle('rtl', isRTL);
+            editor.style.direction = dir;
+            editor.style.textAlign = isRTL ? 'right' : 'left';
+
+            // Editor container (moves line numbers)
+            editorContainer.classList.toggle('rtl-mode', isRTL);
+
+            // Direction toggle button
+            const dirLabel = document.getElementById('dirLabel');
+            const dirIcon = document.getElementById('dirIcon');
+            dirLabel.textContent = dir.toUpperCase();
+            dirIcon.textContent = isRTL ? 'format_textdirection_r_to_l' : 'format_textdirection_l_to_r';
+            dirToggleBtn.classList.toggle('rtl-active', isRTL);
+
+            // Status bar badge
+            const badge = document.getElementById('dirBadge');
+            badge.textContent = dir.toUpperCase();
+            badge.className = `dir-badge ${dir}`;
+
+            // Save preference
+            localStorage.setItem('pronote-direction', dir);
+        }
+
+        /** Toggle direction manually */
+        function toggleDirection() {
+            const newDir = currentDir === 'rtl' ? 'ltr' : 'rtl';
+            setDirection(newDir);
+            showToast(newDir === 'rtl' ? 'جهت: راست به چپ (فارسی)' : 'Direction: Left to Right (English)', 'info');
+            editor.focus();
+        }
+
+        /** Auto-detect direction on input and apply if user hasn't manually set */
+        function autoDetectOnInput() {
+            const text = editor.value;
+            if (!text.trim()) return;
+
+            // Check the current line's direction for smart per-input detection
+            const cursorPos = editor.selectionStart;
+            const textBefore = text.substring(0, cursorPos);
+            const currentLineStart = textBefore.lastIndexOf('\n') + 1;
+            const currentLineEnd = text.indexOf('\n', cursorPos);
+            const currentLine = text.substring(currentLineStart, currentLineEnd === -1 ? text.length : currentLineEnd);
+
+            // Detect from current line first, fallback to whole document
+            const lineDir = detectTextDirection(currentLine);
+            const docDir = detectTextDirection(text);
+
+            // Use document-level direction (more stable)
+            if (docDir !== currentDir) {
+                setDirection(docDir);
+            }
+        }
+
+        /* ========================================
+           FONT SYSTEM
+        ======================================== */
+        function populateFonts() {
+            const commonFonts = [
+                'Vazirmatn', 'Tahoma', 'Arial', 'Arial Black',
+                'Calibri', 'Cambria', 'Cascadia Code',
+                'Comic Sans MS', 'Consolas', 'Constantia', 'Corbel',
+                'Courier New', 'Fira Code',
+                'Franklin Gothic Medium', 'Garamond', 'Georgia',
+                'Helvetica', 'Helvetica Neue', 'Impact',
+                'JetBrains Mono', 'Lucida Console', 'Lucida Sans Unicode',
+                'Menlo', 'Monaco', 'Noto Sans', 'Noto Sans Arabic',
+                'Palatino Linotype', 'Roboto', 'Roboto Mono',
+                'Segoe UI', 'Segoe UI Emoji',
+                'SF Pro Display', 'Source Code Pro',
+                'Times New Roman', 'Trebuchet MS', 'Ubuntu', 'Verdana',
+                // Persian / Arabic fonts
+                'B Nazanin', 'B Mitra', 'B Titr', 'B Zar', 'B Lotus',
+                'B Koodak', 'B Yekan', 'IRANSans', 'IRANSansWeb',
+                'Samim', 'Vazir',
+                'Shabnam', 'Sahel', 'Parastoo', 'Gandom',
+                'Droid Arabic Naskh', 'Noto Naskh Arabic', 'Scheherazade',
+                'Traditional Arabic', 'Simplified Arabic', 'Arabic Typesetting'
+            ];
+
+            const availableFonts = commonFonts.filter(f => isFontAvailable(f));
+
+            // Ensure Vazirmatn is always included (loaded via CDN)
+            if (!availableFonts.includes('Vazirmatn')) {
+                availableFonts.unshift('Vazirmatn');
+            }
+
+            if ('queryLocalFonts' in window) {
+                window.queryLocalFonts().then(fonts => {
+                    const systemFonts = [...new Set(fonts.map(f => f.family))];
+                    const combined = [...new Set([...availableFonts, ...systemFonts])].sort((a, b) =>
+                        a.localeCompare(b, undefined, { sensitivity: 'base' })
+                    );
+                    // Put Vazirmatn first
+                    const idx = combined.indexOf('Vazirmatn');
+                    if (idx > 0) { combined.splice(idx, 1); combined.unshift('Vazirmatn'); }
+                    renderFontOptions(combined);
+                }).catch(() => {
+                    renderFontOptions(availableFonts);
+                });
+            } else {
+                renderFontOptions(availableFonts);
+            }
+        }
+
+        function isFontAvailable(fontName) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const testStr = 'abcdefghijklmnopqrstuvwxyz0123456789سلام';
+            ctx.font = '72px monospace';
+            const baseWidth = ctx.measureText(testStr).width;
+            ctx.font = `72px "${fontName}", monospace`;
+            const testWidth = ctx.measureText(testStr).width;
+            return baseWidth !== testWidth;
+        }
+
+        function renderFontOptions(fonts) {
+            fontSelect.innerHTML = '';
+            fonts.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f;
+                opt.textContent = f;
+                opt.style.fontFamily = `"${f}", sans-serif`;
+                fontSelect.appendChild(opt);
+            });
+            const savedFont = localStorage.getItem('pronote-font') || 'Vazirmatn';
+            if (fonts.includes(savedFont)) fontSelect.value = savedFont;
+        }
+
+        function changeFont(fontFamily) {
+            editor.style.fontFamily = `"${fontFamily}", 'Vazirmatn', Tahoma, sans-serif`;
+            localStorage.setItem('pronote-font', fontFamily);
+        }
+
+        function changeFontSize(size) {
+            editor.style.fontSize = size + 'px';
+            lineNumbers.style.fontSize = Math.max(11, parseInt(size) - 2) + 'px';
+            localStorage.setItem('pronote-fontsize', size);
+            updateLineNumbers();
+        }
+
+        function loadFontPrefs() {
+            const font = localStorage.getItem('pronote-font') || 'Vazirmatn';
+            const size = localStorage.getItem('pronote-fontsize') || '15';
+            editor.style.fontFamily = `"${font}", 'Vazirmatn', Tahoma, sans-serif`;
+            editor.style.fontSize = size + 'px';
+            lineNumbers.style.fontSize = Math.max(11, parseInt(size) - 2) + 'px';
+            fontSelect.value = font;
+            fontSizeSelect.value = size;
+        }
+
+        /* ========================================
+           EDITOR EVENTS
+        ======================================== */
+        editor.addEventListener('input', () => {
+            updateStats();
+            updateLineNumbers();
+            autoDetectOnInput();
+            scheduleAutosave();
+        });
+
+        editor.addEventListener('scroll', () => {
+            lineNumbers.scrollTop = editor.scrollTop;
+        });
+
+        editor.addEventListener('keyup', updateCursorPosition);
+        editor.addEventListener('click', updateCursorPosition);
+
+        /** Convert number to Persian digits */
+        function toPersianDigits(num) {
+            const persianDigits = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+            return String(num).replace(/\d/g, d => persianDigits[d]);
+        }
+
+        /** Update word count, char count, line count */
+        function updateStats() {
+            const text = editor.value;
+            const chars = text.length;
+            const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+            const lines = text.split('\n').length;
+
+            document.getElementById('charCount').textContent = `${toPersianDigits(chars)} نویسه`;
+            document.getElementById('wordCount').textContent = `${toPersianDigits(words)} واژه`;
+            document.getElementById('lineCount').textContent = `${toPersianDigits(lines)} سطر`;
+        }
+
+        /** Update cursor line and column */
+        function updateCursorPosition() {
+            const text = editor.value.substring(0, editor.selectionStart);
+            const lines = text.split('\n');
+            const line = lines.length;
+            const col = lines[lines.length - 1].length + 1;
+            document.getElementById('cursorLine').textContent = toPersianDigits(line);
+            document.getElementById('cursorCol').textContent = toPersianDigits(col);
+        }
+
+        /** Render line numbers */
+        function updateLineNumbers() {
+            const lines = editor.value.split('\n').length;
+            let html = '';
+            for (let i = 1; i <= lines; i++) {
+                html += `<div>${toPersianDigits(i)}</div>`;
+            }
+            lineNumbers.innerHTML = html;
+            lineNumbers.style.lineHeight = '1.75';
+        }
+
+        /* ========================================
+           AUTOSAVE
+        ======================================== */
+        function scheduleAutosave() {
+            const dot = document.getElementById('autosaveDot');
+            const status = document.getElementById('autosaveStatus');
+            dot.style.background = '#fbbf24';
+            status.textContent = 'ذخیره نشده';
+
+            clearTimeout(autosaveTimer);
+            autosaveTimer = setTimeout(() => {
+                localStorage.setItem('pronote-document', editor.value);
+                dot.style.background = '#4ade80';
+                status.textContent = 'ذخیره خودکار';
+            }, 800);
+        }
+
+        function loadDocument() {
+            const saved = localStorage.getItem('pronote-document');
+            if (saved !== null) {
+                editor.value = saved;
+            }
+        }
+
+        /* ========================================
+           FILE OPERATIONS
+        ======================================== */
+        function newDocument() {
+            if (editor.value.trim() !== '' && !confirm('یک سند جدید ایجاد شود؟ تغییرات ذخیره‌نشده از بین می‌رود.')) {
+                return;
+            }
+            editor.value = '';
+            localStorage.removeItem('pronote-document');
+            updateStats();
+            updateLineNumbers();
+            showToast('سند جدید ایجاد شد', 'success');
+            editor.focus();
+        }
+
+        function openFile() {
+            document.getElementById('fileInput').click();
+        }
+
+        function handleFileOpen(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                editor.value = e.target.result;
+                updateStats();
+                updateLineNumbers();
+                // Auto-detect direction from opened file
+                const detected = detectTextDirection(editor.value);
+                setDirection(detected);
+                scheduleAutosave();
+                showToast(`فایل باز شد: ${file.name}`, 'success');
+            };
+            reader.onerror = () => showToast('خطا در خواندن فایل', 'error');
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function saveTXT() {
+            const text = editor.value;
+            // Add BOM for proper Unicode/Persian support in text files
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = generateFilename('txt');
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('فایل TXT ذخیره شد', 'success');
+        }
+
+        function exportPDF() {
+            showToast('در حال ساخت PDF...', 'info');
+            const container = document.createElement('div');
+            const isRTL = currentDir === 'rtl';
+            container.style.cssText = `
+                font-family: ${editor.style.fontFamily || "'Vazirmatn', Tahoma, sans-serif"};
+                font-size: ${editor.style.fontSize || '15px'};
+                line-height: 2;
+                color: #1a1a1a;
+                padding: 20px;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                direction: ${currentDir};
+                text-align: ${isRTL ? 'right' : 'left'};
+                unicode-bidi: embed;
+            `;
+            container.textContent = editor.value;
+
+            const opt = {
+                margin: [15, 15, 15, 15],
+                filename: generateFilename('pdf'),
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(container).save().then(() => {
+                showToast('PDF با موفقیت ساخته شد', 'success');
+            }).catch(() => {
+                showToast('خطا در ساخت PDF', 'error');
+            });
+        }
+
+        function exportDOCX() {
+            try {
+                showToast('در حال ساخت DOCX...', 'info');
+                const { Document, Paragraph, TextRun, Packer, AlignmentType } = docx;
+                const isRTL = currentDir === 'rtl';
+
+                const textLines = editor.value.split('\n');
+                const paragraphs = textLines.map(line => {
+                    return new Paragraph({
+                        alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                        bidirectional: isRTL,
+                        children: [
+                            new TextRun({
+                                text: line,
+                                size: parseInt(editor.style.fontSize || '15') * 2,
+                                rightToLeft: isRTL,
+                                font: currentDir === 'rtl' ? 'B Nazanin' : undefined,
+                            }),
+                        ],
+                    });
+                });
+
+                const doc = new Document({
+                    sections: [{
+                        properties: {
+                            bidi: isRTL,
+                        },
+                        children: paragraphs,
+                    }],
+                });
+
+                Packer.toBlob(doc).then(blob => {
+                    saveAs(blob, generateFilename('docx'));
+                    showToast('DOCX با موفقیت ساخته شد', 'success');
+                }).catch(() => {
+                    showToast('خطا در ساخت DOCX', 'error');
+                });
+            } catch (err) {
+                showToast('خطا: ' + err.message, 'error');
+            }
+        }
+
+        function printDocument() {
+            window.print();
+        }
+
+        function generateFilename(ext) {
+            const now = new Date();
+            const ts = now.toISOString().slice(0, 16).replace('T', '_').replace(':', '-');
+            return `Lc | Note pad_${ts}.${ext}`;
+        }
+
+        /* ========================================
+           UNDO / REDO
+        ======================================== */
+        function editorUndo() {
+            document.execCommand('undo');
+            editor.focus();
+        }
+
+        function editorRedo() {
+            document.execCommand('redo');
+            editor.focus();
+        }
+
+        /* ========================================
+           SEARCH & REPLACE
+        ======================================== */
+        function toggleSearch() {
+            const isActive = searchBar.classList.contains('active');
+            if (isActive) {
+                searchBar.classList.remove('active');
+                searchCountEl.textContent = '';
+                searchMatches = [];
+                currentMatchIndex = -1;
+                editor.focus();
+            } else {
+                searchBar.classList.add('active');
+                searchInput.focus();
+                const selection = editor.value.substring(editor.selectionStart, editor.selectionEnd);
+                if (selection) {
+                    searchInput.value = selection;
+                    performSearch();
+                }
+            }
+        }
+
+        function performSearch() {
+            const query = searchInput.value;
+            if (!query) {
+                searchCountEl.textContent = '';
+                searchMatches = [];
+                currentMatchIndex = -1;
+                return;
+            }
+
+            searchMatches = [];
+            const text = editor.value;
+            let idx = text.toLowerCase().indexOf(query.toLowerCase());
+            while (idx !== -1) {
+                searchMatches.push(idx);
+                idx = text.toLowerCase().indexOf(query.toLowerCase(), idx + 1);
+            }
+
+            if (searchMatches.length > 0) {
+                currentMatchIndex = 0;
+                highlightMatch();
+                searchCountEl.textContent = `${toPersianDigits(1)} از ${toPersianDigits(searchMatches.length)}`;
+            } else {
+                currentMatchIndex = -1;
+                searchCountEl.textContent = 'نتیجه‌ای یافت نشد';
+            }
+        }
+
+        function highlightMatch() {
+            if (currentMatchIndex < 0 || currentMatchIndex >= searchMatches.length) return;
+            const pos = searchMatches[currentMatchIndex];
+            const len = searchInput.value.length;
+            editor.focus();
+            editor.setSelectionRange(pos, pos + len);
+            const linesBefore = editor.value.substring(0, pos).split('\n').length;
+            const lineH = parseInt(getComputedStyle(editor).lineHeight) || 26;
+            editor.scrollTop = (linesBefore - 3) * lineH;
+        }
+
+        function searchNext() {
+            if (searchMatches.length === 0) return;
+            currentMatchIndex = (currentMatchIndex + 1) % searchMatches.length;
+            highlightMatch();
+            searchCountEl.textContent = `${toPersianDigits(currentMatchIndex + 1)} از ${toPersianDigits(searchMatches.length)}`;
+        }
+
+        function searchPrev() {
+            if (searchMatches.length === 0) return;
+            currentMatchIndex = (currentMatchIndex - 1 + searchMatches.length) % searchMatches.length;
+            highlightMatch();
+            searchCountEl.textContent = `${toPersianDigits(currentMatchIndex + 1)} از ${toPersianDigits(searchMatches.length)}`;
+        }
+
+        function replaceCurrent() {
+            if (currentMatchIndex < 0 || searchMatches.length === 0) return;
+            const pos = searchMatches[currentMatchIndex];
+            const searchLen = searchInput.value.length;
+            const replaceVal = replaceInput.value;
+            const before = editor.value.substring(0, pos);
+            const after = editor.value.substring(pos + searchLen);
+            editor.value = before + replaceVal + after;
+            updateStats();
+            updateLineNumbers();
+            scheduleAutosave();
+            performSearch();
+            showToast('۱ مورد جایگزین شد', 'success');
+        }
+
+        function replaceAll() {
+            const query = searchInput.value;
+            if (!query) return;
+            const replaceVal = replaceInput.value;
+            const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            const count = (editor.value.match(regex) || []).length;
+            editor.value = editor.value.replace(regex, replaceVal);
+            updateStats();
+            updateLineNumbers();
+            scheduleAutosave();
+            performSearch();
+            showToast(`${toPersianDigits(count)} مورد جایگزین شد`, 'success');
+        }
+
+        function searchKeyHandler(e) {
+            if (e.key === 'Enter') e.shiftKey ? searchPrev() : searchNext();
+            if (e.key === 'Escape') toggleSearch();
+        }
+
+        /* ========================================
+           FULLSCREEN
+        ======================================== */
+        function toggleFullscreen() {
+            isFullscreen = !isFullscreen;
+            appContainer.classList.toggle('fullscreen', isFullscreen);
+            document.getElementById('fullscreenIcon').textContent = isFullscreen ? 'fullscreen_exit' : 'fullscreen';
+            if (isFullscreen) {
+                if (document.documentElement.requestFullscreen)
+                    document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                if (document.fullscreenElement && document.exitFullscreen)
+                    document.exitFullscreen().catch(() => {});
+            }
+            editor.focus();
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement && isFullscreen) {
+                isFullscreen = false;
+                appContainer.classList.remove('fullscreen');
+                document.getElementById('fullscreenIcon').textContent = 'fullscreen';
+            }
+        });
+
+        /* ========================================
+           KEYBOARD SHORTCUTS
+        ======================================== */
+        document.addEventListener('keydown', (e) => {
+            const ctrl = e.ctrlKey || e.metaKey;
+            if (ctrl && e.key === 'n') { e.preventDefault(); newDocument(); }
+            if (ctrl && e.key === 'o') { e.preventDefault(); openFile(); }
+            if (ctrl && e.key === 's') { e.preventDefault(); saveTXT(); }
+            if (ctrl && e.key === 'p') { e.preventDefault(); printDocument(); }
+            if (ctrl && e.key === 'f') { e.preventDefault(); toggleSearch(); }
+            if (e.key === 'Escape' && isFullscreen) toggleFullscreen();
+        });
+
+        /* ========================================
+           TOAST SYSTEM
+        ======================================== */
+        function showToast(message, type = 'info') {
+            const icons = {
+                success: 'check_circle',
+                error: 'error',
+                info: 'info',
+                warning: 'warning',
+            };
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <span class="material-icons-round">${icons[type] || 'info'}</span>
+                <span>${message}</span>
+            `;
+            toastContainer.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('toast-out');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        /* ========================================
+           TAB KEY SUPPORT
+        ======================================== */
+        editor.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                editor.value = editor.value.substring(0, start) + '\t' + editor.value.substring(end);
+                editor.selectionStart = editor.selectionEnd = start + 1;
+                updateLineNumbers();
+                scheduleAutosave();
+            }
+        });
+
+        /* ========================================
+           INITIAL RENDER
+        ======================================== */
+        updateLineNumbers();
+    </script>
+</body>
+</html>
