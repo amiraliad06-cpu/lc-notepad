@@ -13,3 +13,5 @@ No Sign-up Required: Jump straight into writing securely and privately.
 HTML5 / CSS3
 Vanilla JavaScript (or React/Vue if you used them)
 Deployed on GitHub Pages
+
+ > try now : https://amiraliad06-cpu.github.io/lc-notepad/
